@@ -7,7 +7,8 @@ package com.datis.streaming;
 
 import com.datis.pojo.entity.RegionCount;
 import com.datis.pojo.entity.URLView;
-import com.datis.pojo.entity.WindowedUrl;
+import com.datis.pojo.entity.WindowedUrlUser;
+import com.datis.pojo.entity.WindowedUrlUser;
 import com.datis.pojo.kryo.KryoDesrializer;
 import com.datis.pojo.kryo.KryoSerializer;
 import java.lang.reflect.Array;
@@ -42,7 +43,7 @@ public class URLUsrCountWindowing {
 
     public static void main(String[] arg) throws Exception {
         Properties props = new Properties();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "URLWindowing");
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "URLusrWindowing");
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "172.17.0.13:9092");
         props.put(StreamsConfig.ZOOKEEPER_CONNECT_CONFIG, "172.17.0.11:2181");
         props.put(StreamsConfig.KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
@@ -58,40 +59,40 @@ public class URLUsrCountWindowing {
         regionCountDeserializer.configure(serdeProps, false);
         final Serde<RegionCount> regionCountSerde = Serdes.serdeFrom(regionCountSerializer, regionCountDeserializer);
 
-        final KryoSerializer<WindowedUrl> WindowedUrlSerializer = new KryoSerializer<>();
-        serdeProps.put("Kryo", WindowedUrl.class);
-        WindowedUrlSerializer.configure(serdeProps, false);
-        final KryoDesrializer<WindowedUrl> WindowedUrlDeserializer = new KryoDesrializer<>();
-        serdeProps.put("Kryo", WindowedUrl.class);
-        WindowedUrlDeserializer.configure(serdeProps, false);
-        final Serde<WindowedUrl> wPageViewByRegionSerde = Serdes.serdeFrom(WindowedUrlSerializer, WindowedUrlDeserializer);
+        final KryoSerializer<WindowedUrlUser> WindowedUrlUserSerializer = new KryoSerializer<>();
+        serdeProps.put("Kryo", WindowedUrlUser.class);
+        WindowedUrlUserSerializer.configure(serdeProps, false);
+        final KryoDesrializer<WindowedUrlUser> WindowedUrlUserDeserializer = new KryoDesrializer<>();
+        serdeProps.put("Kryo", WindowedUrlUser.class);
+        WindowedUrlUserDeserializer.configure(serdeProps, false);
+        final Serde<WindowedUrlUser> wPageViewByRegionSerde = Serdes.serdeFrom(WindowedUrlUserSerializer, WindowedUrlUserDeserializer);
 
-      
-        
         Map<String, Object> serdePropsMap = new HashMap<>();
-        serdePropsMap.put("Kryo",URLView.class);
+        serdePropsMap.put("Kryo", URLView.class);
         final KryoSerializer<URLView> serialUrlView = new KryoSerializer<URLView>();
         serialUrlView.configure(serdePropsMap, true);
         final KryoDesrializer<URLView> desrialUrlView = new KryoDesrializer<>();
         desrialUrlView.configure(serdePropsMap, true);
-        final Serde<URLView> urlViewSerde = Serdes.serdeFrom(serialUrlView,desrialUrlView);
-        
+        final Serde<URLView> urlViewSerde = Serdes.serdeFrom(serialUrlView, desrialUrlView);
+
         final Serde<Long> longSerde = Serdes.Long();
 
         KStreamBuilder builder = new KStreamBuilder();
         KStream<Long, URLView> source = builder.stream(longSerde, urlViewSerde, "viewlog");
         System.out.println("Source :" + source.toString());
 
-        KStream<WindowedUrl, RegionCount> counts = 
-               source.map((Long key, URLView value) -> new KeyValue<String, URLView>(value.getUrl(), value)).
+        KStream<WindowedUrlUser, RegionCount> counts
+                = source.map((Long key, URLView value) -> new KeyValue<String, URLView>(value.getUrl() + ";" + value.getUser(), value)).
                 //                countByKey("count");
                 countByKey(TimeWindows.of("GeoPageViewsWindow", 60 * 1000L).advanceBy(60 * 1000L), Serdes.String())
-                .toStream().map(new KeyValueMapper<Windowed<String>, Long, KeyValue<WindowedUrl, RegionCount>>() {
+                .toStream().map(new KeyValueMapper<Windowed<String>, Long, KeyValue<WindowedUrlUser, RegionCount>>() {
                     @Override
-                    public KeyValue<WindowedUrl, RegionCount> apply(Windowed<String> key, Long value) {
-                        WindowedUrl wUrl = new WindowedUrl();
+                    public KeyValue<WindowedUrlUser, RegionCount> apply(Windowed<String> key, Long value) {
+                        WindowedUrlUser wUrl = new WindowedUrlUser();
                         wUrl.windowStart = key.window().start();
-                        wUrl.url = key.key();
+                        String[] str = key.key().split(";");
+                        wUrl.url = str[0];
+                        wUrl.User = str[1];
                         RegionCount rCount = new RegionCount();
                         rCount.url = key.key();
                         rCount.count = value;
@@ -100,7 +101,7 @@ public class URLUsrCountWindowing {
                     }
                 });
 
-        counts.to(wPageViewByRegionSerde, regionCountSerde, "urlwindow");
+        counts.to(wPageViewByRegionSerde, regionCountSerde, "urlusrwindow");
 //        counts.to(Serdes.String(), Serdes.Long(), "step3");
 
         KafkaStreams streams = new KafkaStreams(builder, props);
