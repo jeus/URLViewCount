@@ -5,7 +5,6 @@
  */
 package com.datis.pojo.kryo;
 
-
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
 import com.esotericsoftware.kryo.serializers.FieldSerializer;
@@ -14,6 +13,7 @@ import org.apache.kafka.common.serialization.Serializer;
 import java.util.Map;
 
 /**
+ * com.datis.pojo.kryo.KryoSerializer
  *
  * @author jeus
  */
@@ -22,23 +22,23 @@ public class KryoSerializer<T> implements Serializer<T> {
     public KryoSerializer() {
 
     }
- private Class<T> tClass;
-    
+    private Class<T> tClass;
+
     @SuppressWarnings("unchecked")
     @Override
-    public void configure(Map<String, ?> arg0, boolean arg1) {
-
+    public void configure(Map<String, ?> props, boolean arg1) {
+        tClass = (Class<T>) props.get("Kryo");
     }
 
     @Override
     public byte[] serialize(String arg0, T data) {
         Kryo kryo = new Kryo();
-        FieldSerializer<?> serializer = new FieldSerializer<T>(kryo, tClass);
+        FieldSerializer<?> serializer = new FieldSerializer<Class<T>>(kryo, tClass);
         kryo.register(tClass, serializer);
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         if (data != null) {
             Output output = new Output(stream);
-            kryo.writeObject(output,(Class<T>) data);
+            kryo.writeObject(output, tClass.cast(data));
             output.close();
         }
         return stream.toByteArray();

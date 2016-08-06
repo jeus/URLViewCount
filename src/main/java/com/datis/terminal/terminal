@@ -1,6 +1,9 @@
-##Create viewlog topic
-##answer: 
+##Create "viewlog" topic
+##Result: 
 ##Created topic "viewlog".
 /home/jeus/project/Datis/Kafka/kafka_2.11-0.10.0.0/bin/kafka-topics.sh --create --zookeeper 172.17.0.11:2181 --replication-factor 1 --partitions 1 --topic viewlog 
-
+##Create "" topic
+##Result:
+##Created topic "viewlog".
+/home/jeus/project/Datis/Kafka/kafka_2.11-0.10.0.0/bin/kafka-topics.sh --create --zookeeper 172.17.0.11:2181 --replication-factor 1 --partitions 1 --topic urlwindow
 

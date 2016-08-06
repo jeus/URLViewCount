@@ -5,8 +5,11 @@
 package com.datis.producer;
 
 import com.datis.pojo.entity.URLView;
+import com.datis.pojo.kryo.KryoSerializer;
 import com.datis.pojo.serde.kryo.URLVuSerializer;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 import java.util.logging.Level;
@@ -24,7 +27,8 @@ import org.apache.kafka.common.serialization.LongSerializer;
 public class URLViewLog extends Thread {
 
     private final String topic;
-    final URLVuSerializer urlViewSerialize = new URLVuSerializer();
+//    final URLVuSerializer urlViewSerialize = new URLVuSerializer();
+    final KryoSerializer<URLView> serialUrlView = new KryoSerializer<URLView>();
     LongSerializer longSerializer = new LongSerializer();
     Properties propr = new Properties();
     String[] regions = "Iran,USA,Afghanistan,Albania,Algeria".split(",");
@@ -33,6 +37,9 @@ public class URLViewLog extends Thread {
     KafkaProducer<Long, URLView> producer;
 
     public URLViewLog() {
+        Map<String, Object> serdePropsMap = new HashMap<>();
+        serdePropsMap.put("Kryo", URLView.class);
+        serialUrlView.configure(serdePropsMap, true);
         topic = "viewlog";
         propr = new Properties();
         propr.put("bootstrap.servers", "172.17.0.13:9092");
@@ -42,8 +49,8 @@ public class URLViewLog extends Thread {
 //        propr.put("linger.ms", 9000);//this for async by milisecond messages buffered
         propr.put("acks", "1");
         propr.put("key.serializer", "org.apache.kafka.common.serialization.LongSerializer");
-        propr.put("value.serializer", "com.datis.pojo.serde.kryo.URLVuSerializer");
-        producer = new KafkaProducer<>(propr, longSerializer, urlViewSerialize);
+        propr.put("value.serializer", "com.datis.pojo.kryo.KryoSerializer");
+        producer = new KafkaProducer<>(propr, longSerializer, serialUrlView);
     }
 
     @Override
@@ -54,10 +61,11 @@ public class URLViewLog extends Thread {
         while (true) {
             dt = new Date();
             Long key = dt.getTime();
+            URLView urlView = getWord();
             try {
-                URLViewCallback regCallBack = new URLViewCallback(dt.getTime(), getWord());
+                URLViewCallback regCallBack = new URLViewCallback(dt.getTime(), urlView);
 //                RecordMetadata rc =
-                producer.send(new ProducerRecord<>(topic, key, getWord()), regCallBack);
+                producer.send(new ProducerRecord<>(topic, key, urlView), regCallBack);
 //                System.out.println("Send Data To Topic Sync:" + rc.offset() + "   Str:" + rc.toString());
 
                 Thread.sleep(3000);

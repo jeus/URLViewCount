@@ -9,10 +9,11 @@ package com.datis.pojo.entity;
  *
  * @author jeus
  */
-public class WindowedPageViewByRegion {
+public class WindowedUrlUser {
 
+        public String url;
         public long windowStart;
-        public String region;
+        public String User;
     }
     
     

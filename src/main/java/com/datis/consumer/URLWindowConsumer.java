@@ -5,7 +5,9 @@
  */
 package com.datis.consumer;
 
+import com.datis.pojo.entity.RegionCount;
 import com.datis.pojo.entity.URLView;
+import com.datis.pojo.entity.WindowedUrl;
 import com.datis.pojo.kryo.KryoDesrializer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -27,16 +29,15 @@ import org.apache.kafka.common.serialization.LongDeserializer;
  *
  * @author jeus
  */
-public class URLViewConsumer extends Thread {
+public class URLWindowConsumer extends Thread {
 
     LongDeserializer longDeserializer = new LongDeserializer();
-//    StringDeserializer strDeserializer = new StringDeserializer();
-//    URLVuDeserializer uRLVuDserializer = new com.datis.pojo.serde.kryo.URLVuDeserializer();
-    KryoDesrializer<Object> instanceD;
+    KryoDesrializer<WindowedUrl> windowedDes;
+    KryoDesrializer<RegionCount> regionCountDes;
     private boolean logOn = true;
     List<TopicPartition> tp = new ArrayList<>(4);
-    private static int[] partitionNumb = new int[4];
-    private static long[][] minMaxOffset = new long[4][2];
+
+    
     KafkaConsumer viewLog;
     KafkaConsumer countURL;
     KafkaConsumer countRegion;
@@ -44,17 +45,22 @@ public class URLViewConsumer extends Thread {
     static Properties pro = new Properties();
     String topic = "";
 
-    public URLViewConsumer() {
+    public URLWindowConsumer() {
     }
 
-    public URLViewConsumer(List<Properties> props, boolean logOn) {
+    public URLWindowConsumer(List<Properties> props, boolean logOn) {
         this.logOn = logOn;
-        Map<String, Object> serdeProps = new HashMap<>();
-        serdeProps.put("Kryo",URLView.class);
+        Map<String, Object> desPropsKey = new HashMap<>();
+        desPropsKey.put("Kryo",WindowedUrl.class);
+        windowedDes = new KryoDesrializer<>();
+        windowedDes.configure(desPropsKey, true);
         
-        instanceD = new KryoDesrializer<>();
-        instanceD.configure(serdeProps, true);
-        viewLog = new KafkaConsumer(props.get(0), longDeserializer, instanceD);
+        Map<String, Object> desPropsVal = new HashMap<>();
+        desPropsVal.put("Kryo",RegionCount.class);
+        regionCountDes= new KryoDesrializer<>();
+        regionCountDes.configure(desPropsVal, true);
+        
+        viewLog = new KafkaConsumer(props.get(0), windowedDes,regionCountDes);
 //        countURL = new KafkaConsumer(props.get(1));
 //        countRegion = new KafkaConsumer(props.get(2));
 //        countUser = new KafkaConsumer(props.get(3));
@@ -78,7 +84,7 @@ public class URLViewConsumer extends Thread {
         int position = 8000;
         while (true) {
             StringBuilder strBuilder = new StringBuilder();
-            ConsumerRecords<Long, URLView> ViewLogRecords = viewLog.poll(1000);
+            ConsumerRecords<WindowedUrl, RegionCount> ViewLogRecords = viewLog.poll(1000);
 //            ConsumerRecords<WindowedPageViewByRegion, RegionCount> countURLRecords = viewLog.poll(1000);
 //            ConsumerRecords<WindowedPageViewByRegion, RegionCount> countRegionRecords = viewLog.poll(1000);
 //            ConsumerRecords<WindowedPageViewByRegion, RegionCount> countUserRecords = viewLog.poll(1000);
@@ -86,12 +92,11 @@ public class URLViewConsumer extends Thread {
 //            for (ConsumerRecord<String , String> rec : records) {
             if (ViewLogRecords.count() != 0) {
                 if (logOn) {
-                    for (ConsumerRecord<Long, URLView> rec : ViewLogRecords) {
+                    for (ConsumerRecord<WindowedUrl, RegionCount> rec : ViewLogRecords) {
                         strBuilder.append("ofs:").append(rec.offset());
-                        strBuilder.append(" Tim:").append(dt.format(new Date(rec.key())));
-                        strBuilder.append(" Url:").append(rec.value().getUrl());
-                        strBuilder.append(" Rgn:").append(rec.value().getRegion());
-                        strBuilder.append(" Usr:").append(rec.value().getUser());
+                        strBuilder.append(" url:").append(rec.key().url);
+                        strBuilder.append(" time:").append(dt.format(new Date(rec.key().windowStart)));
+                        strBuilder.append(" Cnt:").append(rec.value().count);
                         strBuilder.append("\n");
                     }
                 }
@@ -105,7 +110,7 @@ public class URLViewConsumer extends Thread {
         List<Properties> props = new ArrayList<>();
         Properties viewLog = new Properties();
         viewLog.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "172.17.0.13:9092");
-        viewLog.put(ConsumerConfig.GROUP_ID_CONFIG, "viewlog");
+        viewLog.put(ConsumerConfig.GROUP_ID_CONFIG, "urlwindow");
 //        props.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, (4000 * 10000) + "");//change this for increase and decrease packet fethe by viewLog every message is 100Byte
         viewLog.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "100");
         viewLog.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
@@ -160,7 +165,7 @@ public class URLViewConsumer extends Thread {
 //        propsByUser.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "com.datis.irc.pojo.WindowDeserializer");
 //        propsByUser.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "com.datis.irc.pojo.RegionCountDeserializer");
 //        props.add(propsByUser);
-        URLViewConsumer consumer1 = new URLViewConsumer(props, true);
+        URLWindowConsumer consumer1 = new URLWindowConsumer(props, true);
         consumer1.start();
     }
 

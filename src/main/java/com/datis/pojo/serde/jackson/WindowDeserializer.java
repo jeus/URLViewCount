@@ -10,7 +10,7 @@ package com.datis.pojo.serde.jackson;
  * @author jeus
  */
 
-import com.datis.pojo.entity.WindowedPageViewByRegion;
+import com.datis.pojo.entity.WindowedUrl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -18,10 +18,10 @@ import java.util.Map;
 
 
 
-public class WindowDeserializer implements Deserializer<WindowedPageViewByRegion> {
+public class WindowDeserializer implements Deserializer<WindowedUrl> {
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    private WindowedPageViewByRegion tClass;
+    private WindowedUrl tClass;
 
     /**
      * Default constructor needed by Kafka
@@ -32,17 +32,17 @@ public class WindowDeserializer implements Deserializer<WindowedPageViewByRegion
     @SuppressWarnings("unchecked")
     @Override
     public void configure(Map<String, ?> props, boolean isKey) {
-        tClass = (WindowedPageViewByRegion) props.get("JsonPOJOClass");
+        tClass = (WindowedUrl) props.get("JsonPOJOClass");
     }
 
     @Override
-    public WindowedPageViewByRegion deserialize(String topic, byte[] bytes) {
+    public WindowedUrl deserialize(String topic, byte[] bytes) {
         if (bytes == null)
             return null;
 
-        WindowedPageViewByRegion data;
+        WindowedUrl data;
         try {
-            data = objectMapper.readValue(bytes, WindowedPageViewByRegion.class);
+            data = objectMapper.readValue(bytes, WindowedUrl.class);
         } catch (Exception e) {
             throw new SerializationException(e);
         }

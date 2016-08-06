@@ -22,9 +22,10 @@ public class URLVuDeserializer implements Deserializer<URLView> {
     private ObjectMapper objectMapper = new ObjectMapper();
     private URLView tClass;
 
+    @SuppressWarnings("unchecked")
     @Override
     public void configure(Map<String, ?> props, boolean arg1) {
-        tClass = (URLView) props.get("Kryo");
+
     }
 
     @Override

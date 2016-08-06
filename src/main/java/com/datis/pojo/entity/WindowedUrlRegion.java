@@ -9,8 +9,12 @@ package com.datis.pojo.entity;
  *
  * @author jeus
  */
-public class RegionCount {
+public class WindowedUrlRegion {
 
-        public long count;
         public String url;
+        public long windowStart;
+        public String region;
     }
+    
+    
+   
